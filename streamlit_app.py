@@ -481,27 +481,35 @@ with tab1:
                 st.divider()
                 continue
 
-            # 内容 + 金额 + 操作按钮，一行
-            r1, r2, r3, r4 = st.columns([0.6, 3.5, 1.2, 1])
-            with r1:
-                st.markdown("📈" if is_income else "📉")
-            with r2:
-                desc = rec['description'] or rec['category']
-                st.markdown(f"**{desc}** <span style='font-size:11px;color:#888'>{rec['date']} · {rec['category']}</span>",
+            # 紧凑记录行（手机端适配）
+            icon = "📈" if is_income else "📉"
+            desc = rec['description'] or rec['category']
+            amt_color = "#27ae60" if is_income else "#e74c3c"
+            sign = "+" if is_income else "-"
+
+            # 第一行：图标 + 内容描述 + 金额
+            c1, c2, c3 = st.columns([0.5, 3, 1.2])
+            with c1:
+                st.markdown(icon)
+            with c2:
+                st.markdown(f"**{desc}** <span style='font-size:11px;color:#888'>· {rec['category']}</span>",
                             unsafe_allow_html=True)
-            with r3:
-                amt_color = "#27ae60" if is_income else "#e74c3c"
-                sign = "+" if is_income else "-"
+            with c3:
                 st.markdown(f"<span style='color:{amt_color};font-size:14px;font-weight:600'>{sign}{rec['amount']:.0f}</span>",
                             unsafe_allow_html=True)
-            with r4:
-                col_e, col_d = st.columns(2)
-                with col_e:
-                    if st.button("改", key=f"e_{rec_id}", help="编辑"):
+
+            # 第二行：日期 + 操作按钮
+            d1, d2 = st.columns([3, 2])
+            with d1:
+                st.caption(rec['date'])
+            with d2:
+                b1, b2 = st.columns(2)
+                with b1:
+                    if st.button("✏️", key=f"e_{rec_id}", help="编辑"):
                         st.session_state["editing_id"] = rec_id
                         st.rerun()
-                with col_d:
-                    if st.button("删", key=f"d_{rec_id}", help="删除"):
+                with b2:
+                    if st.button("🗑️", key=f"d_{rec_id}", help="删除"):
                         st.session_state["deleting_id"] = rec_id
                         st.rerun()
             st.divider()

@@ -430,79 +430,78 @@ with tab1:
             is_income = rec["type"] == "income"
 
             if st.session_state.get("deleting_id") == rec_id:
-                st.warning(f"⚠️ 确认删除？{rec['date']} {rec['category']} ¥{rec['amount']:.2f}")
-                dc1, dc2 = st.columns(2)
-                with dc1:
-                    if st.button("✅ 确认删除", key=f"conf_del_{rec_id}", type="primary"):
+                c_ok, c_no = st.columns(2)
+                with c_ok:
+                    if st.button(f"确认删除 {rec['date']} {rec['amount']:.0f}元", key=f"conf_del_{rec_id}", type="primary"):
                         delete_record(rec_id)
                         st.session_state["deleting_id"] = None
                         st.rerun()
-                with dc2:
-                    if st.button("❌ 取消", key=f"cancel_del_{rec_id}"):
+                with c_no:
+                    if st.button("取消", key=f"cancel_del_{rec_id}"):
                         st.session_state["deleting_id"] = None
                         st.rerun()
                 st.divider()
                 continue
 
             if st.session_state.get("editing_id") == rec_id:
-                st.markdown("**✏️ 编辑记录**")
                 default_date = datetime.strptime(rec["date"], "%Y-%m-%d").date()
                 ALL_CATS = ["餐饮", "交通", "购物", "娱乐", "生活", "医疗", "工资", "其他"]
                 cat_idx = ALL_CATS.index(rec["category"]) if rec["category"] in ALL_CATS else 7
 
-                ce1, ce2 = st.columns(2)
+                ce1, ce2, ce3, ce4, ce5 = st.columns([1.5, 1, 1, 1, 1])
                 with ce1:
                     edit_date = st.date_input("日期", default_date, key=f"edit_date_{rec_id}")
-                    edit_type = st.selectbox(
-                        "类型", ["expense", "income"],
-                        index=["expense", "income"].index(rec["type"]),
-                        format_func=lambda x: "📉 支出" if x == "expense" else "📈 收入",
-                        key=f"edit_type_{rec_id}"
-                    )
                 with ce2:
-                    edit_cat = st.selectbox("类别", ALL_CATS, index=cat_idx, key=f"edit_cat_{rec_id}")
+                    edit_type = st.selectbox("类型", ["expense", "income"],
+                        index=["expense", "income"].index(rec["type"]),
+                        format_func=lambda x: "支出" if x == "expense" else "收入",
+                        key=f"edit_type_{rec_id}", label_visibility="collapsed")
+                with ce3:
+                    edit_cat = st.selectbox("类", ALL_CATS, index=cat_idx,
+                        key=f"edit_cat_{rec_id}", label_visibility="collapsed")
+                with ce4:
                     edit_amt = st.number_input("金额", value=float(rec["amount"]),
-                                               min_value=0.01, step=0.01,
-                                               key=f"edit_amt_{rec_id}", label_visibility="visible")
-                edit_desc = st.text_input("备注", value=rec["description"] or "",
-                                          key=f"edit_desc_{rec_id}", label_visibility="visible")
+                        min_value=0.01, step=0.01,
+                        key=f"edit_amt_{rec_id}", label_visibility="collapsed")
+                with ce5:
+                    edit_desc = st.text_input("备注", value=rec["description"] or "",
+                        key=f"edit_desc_{rec_id}", label_visibility="collapsed")
 
-                es1, es2 = st.columns(2)
+                es1, es2 = st.columns([1, 1])
                 with es1:
-                    if st.button("💾 保存", key=f"save_{rec_id}", type="primary", use_container_width=True):
+                    if st.button("保存", key=f"save_{rec_id}", type="primary", use_container_width=True):
                         update_record(rec_id, edit_date.strftime("%Y-%m-%d"), edit_type,
                                       edit_cat, edit_amt, edit_desc)
                         st.session_state["editing_id"] = None
-                        st.success("已保存")
                         st.rerun()
                 with es2:
-                    if st.button("❌ 取消", key=f"cancel_{rec_id}", use_container_width=True):
+                    if st.button("取消", key=f"cancel_{rec_id}", use_container_width=True):
                         st.session_state["editing_id"] = None
                         st.rerun()
                 st.divider()
                 continue
 
-            # 紧凑单行记录
-            rcol1, rcol2, rcol3 = st.columns([4, 1.5, 1.5])
-            with rcol1:
-                icon = "📈" if is_income else "📉"
+            # 内容 + 金额 + 操作按钮，一行
+            r1, r2, r3, r4 = st.columns([0.6, 3.5, 1.2, 1])
+            with r1:
+                st.markdown("📈" if is_income else "📉")
+            with r2:
                 desc = rec['description'] or rec['category']
-                st.markdown(f"<div style='line-height:1.3'><b>{icon}</b> {desc}"
-                            f"<br/><span style='font-size:11px;color:#888'>{rec['date']} · {rec['category']}</span></div>",
+                st.markdown(f"**{desc}** <span style='font-size:11px;color:#888'>{rec['date']} · {rec['category']}</span>",
                             unsafe_allow_html=True)
-            with rcol2:
+            with r3:
                 amt_color = "#27ae60" if is_income else "#e74c3c"
                 sign = "+" if is_income else "-"
-                st.markdown(f"<div style='color:{amt_color};font-size:15px;font-weight:600;text-align:right'>{sign}{rec['amount']:.0f}</div>",
+                st.markdown(f"<span style='color:{amt_color};font-size:14px;font-weight:600'>{sign}{rec['amount']:.0f}</span>",
                             unsafe_allow_html=True)
-            with rcol3:
-                ec1, ec2 = st.columns(2)
-                with ec1:
-                    if st.button("✏️", key=f"edit_{rec_id}", help="编辑"):
+            with r4:
+                col_e, col_d = st.columns(2)
+                with col_e:
+                    if st.button("改", key=f"e_{rec_id}", help="编辑"):
                         st.session_state["editing_id"] = rec_id
                         st.rerun()
-                with ec2:
-                    if st.button("🗑️", key=f"del_{rec_id}", help="删除"):
+                with col_d:
+                    if st.button("删", key=f"d_{rec_id}", help="删除"):
                         st.session_state["deleting_id"] = rec_id
                         st.rerun()
             st.divider()

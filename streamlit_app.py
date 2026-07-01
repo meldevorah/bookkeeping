@@ -30,6 +30,10 @@ except Exception:
 # ──────────────────────────────────────────
 # 数据库初始化
 # ──────────────────────────────────────────
+def _table_has_column(cursor, table, column):
+    cursor.execute(f"PRAGMA table_info({table})")
+    return any(row[1] == column for row in cursor.fetchall())
+
 def init_db():
     conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
@@ -55,6 +59,10 @@ def init_db():
         )
     """)
     conn.commit()
+    # 迁移：旧表缺 user_id 列则添加
+    if not _table_has_column(cursor, "records", "user_id"):
+        cursor.execute("ALTER TABLE records ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1")
+        conn.commit()
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)",

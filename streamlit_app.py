@@ -343,14 +343,21 @@ tab1, tab2, tab3 = st.tabs(["📝 记账", "📊 月度总结", "📅 年度总�
 # Tab 1：记账
 with tab1:
     summary = get_summary(user_id=uid)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("总收入", f"¥{summary['income']:.2f}")
-    with c2:
-        st.metric("总支出", f"¥{summary['expense']:.2f}")
-    with c3:
-        st.metric("结余", f"¥{summary['balance']:.2f}",
-                  delta_color="normal" if summary['balance'] >= 0 else "inverse")
+    # 紧凑统计行
+    sc1, sc2, sc3 = st.columns([1, 1, 1])
+    with sc1:
+        st.markdown(f"<div style='font-size:12px;color:#888'>总收入</div>"
+                    f"<div style='font-size:16px;font-weight:600;color:#27ae60'>+{summary['income']:.0f}</div>",
+                    unsafe_allow_html=True)
+    with sc2:
+        st.markdown(f"<div style='font-size:12px;color:#888'>总支出</div>"
+                    f"<div style='font-size:16px;font-weight:600;color:#e74c3c'>-{summary['expense']:.0f}</div>",
+                    unsafe_allow_html=True)
+    with sc3:
+        bal_color = "#27ae60" if summary['balance'] >= 0 else "#e74c3c"
+        st.markdown(f"<div style='font-size:12px;color:#888'>结余</div>"
+                    f"<div style='font-size:16px;font-weight:600;color:{bal_color}'>{summary['balance']:.0f}</div>",
+                    unsafe_allow_html=True)
 
     st.divider()
     st.subheader("➕ 添加记录")
@@ -475,25 +482,26 @@ with tab1:
                 st.divider()
                 continue
 
-            col_info, col_amt, col_btn = st.columns([3, 1, 2])
-            with col_info:
-                type_label = "📈 收入" if is_income else "📉 支出"
-                st.markdown(f"**{type_label}** {rec['description'] or rec['category']}")
-                st.caption(f"{rec['date']} · {rec['category']}")
-            with col_amt:
+            # 紧凑单行记录
+            rcol1, rcol2, rcol3 = st.columns([4, 1.5, 1.5])
+            with rcol1:
+                icon = "📈" if is_income else "📉"
+                desc = rec['description'] or rec['category']
+                st.markdown(f"<div style='line-height:1.3'><b>{icon}</b> {desc}"
+                            f"<br/><span style='font-size:11px;color:#888'>{rec['date']} · {rec['category']}</span></div>",
+                            unsafe_allow_html=True)
+            with rcol2:
                 amt_color = "#27ae60" if is_income else "#e74c3c"
-                st.markdown(
-                    f"<span style='color:{amt_color};font-size:18px;font-weight:600'>"
-                    f"{'+' if is_income else '-'}{rec['amount']:.2f}</span>",
-                    unsafe_allow_html=True
-                )
-            with col_btn:
-                b1, b2 = st.columns(2)
-                with b1:
+                sign = "+" if is_income else "-"
+                st.markdown(f"<div style='color:{amt_color};font-size:15px;font-weight:600;text-align:right'>{sign}{rec['amount']:.0f}</div>",
+                            unsafe_allow_html=True)
+            with rcol3:
+                ec1, ec2 = st.columns(2)
+                with ec1:
                     if st.button("✏️", key=f"edit_{rec_id}", help="编辑"):
                         st.session_state["editing_id"] = rec_id
                         st.rerun()
-                with b2:
+                with ec2:
                     if st.button("🗑️", key=f"del_{rec_id}", help="删除"):
                         st.session_state["deleting_id"] = rec_id
                         st.rerun()

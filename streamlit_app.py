@@ -386,14 +386,20 @@ if not st.session_state["logged_in"]:
 
 uid = st.session_state["user_id"]
 username = st.session_state["username"]
-st.title(f"💰 {username} 的账本")
 
-col_header1, col_header2 = st.columns(2)
-with col_header1:
-    if st.button("🚪 退出登录", use_container_width=True):
-        logout()
-        st.rerun()
-with col_header2:
+# ──────────────────────────────────────────
+# 侧边栏菜单
+# ──────────────────────────────────────────
+with st.sidebar:
+    st.markdown(f"### 💰 {username}")
+    st.markdown("---")
+    menu_page = st.radio(
+        "菜单",
+        ["🏠 首页", "📋 记录列表", "📊 月度总结", "📅 年度总结"],
+        label_visibility="collapsed",
+        key="menu_page"
+    )
+    st.markdown("---")
     with st.popover("🔑 修改密码"):
         old_pw = st.text_input("当前密码", type="password", key="old_pw")
         new_pw = st.text_input("新密码", type="password", key="new_pw")
@@ -407,11 +413,12 @@ with col_header2:
                 st.success("密码修改成功！")
             else:
                 st.error("当前密码错误或修改失败")
+    if st.button("🚪 退出登录", use_container_width=True, key="logout_btn"):
+        logout()
+        st.rerun()
 
-tab1, tab2, tab3 = st.tabs(["📝 记账", "📊 月度总结", "📅 年度总结"])
-
-# Tab 1：记账
-with tab1:
+# 菜单内容
+if menu_page == "🏠 首页":
     summary = get_summary(user_id=uid)
     # 紧凑统计行
     sc1, sc2, sc3 = st.columns([1, 1, 1])
@@ -504,6 +511,7 @@ with tab1:
 
     st.divider()
 
+elif menu_page == "📋 记录列表":
     if "editing_id" not in st.session_state:
         st.session_state["editing_id"] = None
     if "deleting_id" not in st.session_state:
@@ -575,7 +583,6 @@ with tab1:
             amt_color = "#27ae60" if is_income else "#e74c3c"
             sign = "+" if is_income else "-"
 
-            # 第一行：图标 + 内容描述 + 金额
             c1, c2, c3 = st.columns([0.5, 3, 1.2])
             with c1:
                 st.markdown(icon)
@@ -586,7 +593,6 @@ with tab1:
                 st.markdown(f"<span style='color:{amt_color};font-size:14px;font-weight:600'>{sign}{rec['amount']:.0f}</span>",
                             unsafe_allow_html=True)
 
-            # 第二行：日期 + 操作按钮
             d1, d2 = st.columns([3, 2])
             with d1:
                 st.caption(rec['date'])
@@ -615,8 +621,7 @@ with tab1:
     else:
         st.info("暂无记录，开始添加吧！")
 
-# Tab 2：月度总结
-with tab2:
+elif menu_page == "📊 月度总结":
     st.subheader("📊 月度总结")
     all_records = get_records(limit=5000, user_id=uid)
     months_set = sorted(set(r['date'][:7] for r in all_records), reverse=True)
@@ -650,8 +655,7 @@ with tab2:
         for item in cs['income']:
             st.markdown(f"{item['category']}  ¥{item['amount']:.2f}")
 
-# Tab 3：年度总结
-with tab3:
+elif menu_page == "📅 年度总结":
     st.subheader("🏆 年度总结")
     year = st.selectbox(
         "选择年份",

@@ -11,6 +11,7 @@ import json
 import re
 import os
 import sys
+import calendar as cal_mod
 from datetime import datetime
 from pathlib import Path
 
@@ -276,6 +277,75 @@ def export_to_json(user_id=1):
         'records': records
     }
 
+def get_daily_totals(year, month, user_id=1):
+    """返回 {日: 净额} 字典，净额=收入-支出"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    prefix = f"{year:04d}-{month:02d}-"
+    cursor.execute(
+        "SELECT date, type, amount FROM records WHERE user_id=? AND date LIKE ?",
+        (user_id, prefix + "%")
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    totals = {}
+    for d, t, a in rows:
+        day = int(d.split("-")[2])
+        totals[day] = totals.get(day, 0) + (a if t == "income" else -a)
+    return totals
+
+def render_calendar(year, month, daily_totals):
+    """渲染月历 HTML，每格显示日期 + 净额"""
+    cal_obj = cal_mod.Calendar(firstweekday=0)
+    weeks = cal_obj.monthdayscalendar(year, month)
+
+    html = (
+        '<div style="background:#1a1a1e;border:1px solid #2a2a2e;'
+        'border-radius:8px;padding:6px;margin:4px 0">'
+        '<table style="width:100%;border-collapse:collapse;'
+        'text-align:center;font-size:12px;color:#ddd">'
+        '<tr>'
+        '<th style="color:#888;padding:4px">一</th>'
+        '<th style="color:#888;padding:4px">二</th>'
+        '<th style="color:#888;padding:4px">三</th>'
+        '<th style="color:#888;padding:4px">四</th>'
+        '<th style="color:#888;padding:4px">五</th>'
+        '<th style="color:#888;padding:4px">六</th>'
+        '<th style="color:#888;padding:4px">日</th>'
+        '</tr>'
+    )
+    today_d = datetime.now().day
+    today_y = datetime.now().year
+    today_m = datetime.now().month
+
+    for week in weeks:
+        html += '<tr>'
+        for day in week:
+            if day == 0:
+                html += '<td style="padding:4px"></td>'
+            else:
+                amount = daily_totals.get(day, 0)
+                if amount > 0:
+                    color, sign = "#27ae60", "+"
+                elif amount < 0:
+                    color, sign = "#e74c3c", ""
+                else:
+                    color, sign = "#666", ""
+                is_today = (day == today_d and year == today_y and month == today_m)
+                bg = "#333" if is_today else "transparent"
+                border = "1px solid #555" if is_today else "1px solid #2a2a2e"
+                amt_text = f"{sign}{amount:.0f}" if amount != 0 else "·"
+                html += (
+                    f'<td style="padding:4px;background:{bg};'
+                    f'border:{border};vertical-align:top;border-radius:4px">'
+                    f'<div style="color:#aaa;font-size:10px">{day}</div>'
+                    f'<div style="color:{color};font-weight:600;font-size:11px">{amt_text}</div>'
+                    '</td>'
+                )
+        html += '</tr>'
+    html += '</table></div>'
+    return html
+
 # ══════════════════════════════════════════
 # Streamlit UI
 # ══════════════════════════════════════════
@@ -358,6 +428,24 @@ with tab1:
         st.markdown(f"<div style='font-size:12px;color:#888'>结余</div>"
                     f"<div style='font-size:16px;font-weight:600;color:{bal_color}'>{summary['balance']:.0f}</div>",
                     unsafe_allow_html=True)
+
+    st.divider()
+
+    # ──────────────────────────────────────────
+    # 日历视图
+    # ──────────────────────────────────────────
+    st.subheader("📅 每日收支")
+    cal_col1, cal_col2 = st.columns(2)
+    with cal_col1:
+        cal_year = st.selectbox("年", list(range(datetime.now().year, datetime.now().year - 5, -1)),
+                                 key="cal_year", label_visibility="collapsed")
+    with cal_col2:
+        cal_month = st.selectbox("月", list(range(1, 13)),
+                                  index=datetime.now().month - 1,
+                                  format_func=lambda x: f"{x}月",
+                                  key="cal_month", label_visibility="collapsed")
+    daily = get_daily_totals(cal_year, cal_month, user_id=uid)
+    st.markdown(render_calendar(cal_year, cal_month, daily), unsafe_allow_html=True)
 
     st.divider()
     st.subheader("➕ 添加记录")
